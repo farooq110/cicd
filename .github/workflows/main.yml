@@ -47,22 +47,24 @@ jobs:
   dependency-scan:
     name: Dependency Scan
     runs-on: ubuntu-latest
-    container:
-      image: artifactory.nordstrom.com/docker/app00651/common/trivy-base:5840868
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
       
-      - name: Run Trivy scan
-        run: |
-          trivy fs . --security-checks vuln --exit-code 1 --severity MEDIUM,HIGH,CRITICAL \
-            --skip-dirs ./.cicd --ignore-unfixed
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          severity: 'MEDIUM,HIGH,CRITICAL'
+          skip-dirs: '.cicd'
+          ignore-unfixed: true
 
   terraform-plan-nonprod-dev-branch:
     name: Terraform Plan (NonProd Dev Branch)
     runs-on: ubuntu-latest
-    container:
-      image: artifactory.nordstrom.com/docker/cic/omnibus_buildtime_v3:1.3.35
     if: github.ref_name != 'main'
     needs: dependency-scan
     strategy:
@@ -78,6 +80,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -101,8 +108,6 @@ jobs:
   terraform-apply-nonprod-dev-branch:
     name: Terraform Apply (NonProd Dev Branch)
     runs-on: ubuntu-latest
-    container:
-      image: artifactory.nordstrom.com/docker/cic/omnibus_buildtime_v3:1.3.35
     if: github.ref_name != 'main'
     needs: terraform-plan-nonprod-dev-branch
     environment: nonprod-dev
@@ -119,6 +124,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -142,8 +152,6 @@ jobs:
   terraform-plan-prod:
     name: Terraform Plan (Prod)
     runs-on: ubuntu-latest
-    container:
-      image: artifactory.nordstrom.com/docker/cic/omnibus_buildtime_v3:1.3.35
     if: github.ref_name == 'main'
     needs: dependency-scan
     strategy:
@@ -157,6 +165,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -180,8 +193,6 @@ jobs:
   terraform-apply-prod:
     name: Terraform Apply (Prod)
     runs-on: ubuntu-latest
-    container:
-      image: artifactory.nordstrom.com/docker/cic/omnibus_buildtime_v3:1.3.35
     if: github.ref_name == 'main'
     needs: terraform-plan-prod
     environment: production
@@ -196,6 +207,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
       
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
