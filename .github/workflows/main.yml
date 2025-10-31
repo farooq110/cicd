@@ -105,92 +105,92 @@ jobs:
         working-directory: ./terraform
         run: terraform plan -var-file=./variables/nonprod.tfvars
 
-  terraform-apply-nonprod-dev-branch:
-    name: Terraform Apply (NonProd Dev Branch)
-    runs-on: ubuntu-latest
-    if: github.ref_name != 'main'
-    needs: terraform-plan-nonprod-dev-branch
-    environment: nonprod-dev
-    strategy:
-      matrix:
-        include:
-          - environment: ${{ github.ref_name }}
-            state_name: dev-${{ github.ref_name }}-tf
-    env:
-      TF_VAR_environment: ${{ matrix.environment }}
-      TERRAFORM_STATE_NAME: ${{ matrix.state_name }}
-      TERRAFORM_BACKEND_S3_KEYNAME: terraform/cdm-sm/${{ github.ref_name }}/resources.tfstate
-      AWS_ACCOUNT_ID: 396816018484
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#   terraform-apply-nonprod-dev-branch:
+#     name: Terraform Apply (NonProd Dev Branch)
+#     runs-on: ubuntu-latest
+#     if: github.ref_name != 'main'
+#     needs: terraform-plan-nonprod-dev-branch
+#     environment: nonprod-dev
+#     strategy:
+#       matrix:
+#         include:
+#           - environment: ${{ github.ref_name }}
+#             state_name: dev-${{ github.ref_name }}-tf
+#     env:
+#       TF_VAR_environment: ${{ matrix.environment }}
+#       TERRAFORM_STATE_NAME: ${{ matrix.state_name }}
+#       TERRAFORM_BACKEND_S3_KEYNAME: terraform/cdm-sm/${{ github.ref_name }}/resources.tfstate
+#       AWS_ACCOUNT_ID: 396816018484
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
       
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.5.0"
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: "1.5.0"
       
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_NONPROD }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_NONPROD }}
-          aws-region: us-west-2
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_NONPROD }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_NONPROD }}
+#           aws-region: us-west-2
       
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: |
-          terraform init \
-            -backend-config="bucket=${{ env.TERRAFORM_BACKEND_S3_BUCKET_NONPROD }}" \
-            -backend-config="key=${{ env.TERRAFORM_BACKEND_S3_KEYNAME }}" \
-            -backend-config="region=us-west-2"
+#       - name: Terraform Init
+#         working-directory: ./terraform
+#         run: |
+#           terraform init \
+#             -backend-config="bucket=${{ env.TERRAFORM_BACKEND_S3_BUCKET_NONPROD }}" \
+#             -backend-config="key=${{ env.TERRAFORM_BACKEND_S3_KEYNAME }}" \
+#             -backend-config="region=us-west-2"
       
-      - name: Terraform Apply
-        working-directory: ./terraform
-        run: terraform apply -auto-approve -var-file=./variables/nonprod.tfvars
+#       - name: Terraform Apply
+#         working-directory: ./terraform
+#         run: terraform apply -auto-approve -var-file=./variables/nonprod.tfvars
 
-  terraform-plan-prod:
-    name: Terraform Plan (Prod)
-    runs-on: ubuntu-latest
-    if: github.ref_name == 'main'
-    needs: dependency-scan
-    strategy:
-      matrix:
-        include:
-          - state_name: prod-tf
-    env:
-      TERRAFORM_STATE_NAME: ${{ matrix.state_name }}
-      TERRAFORM_BACKEND_S3_KEYNAME: terraform/cdm-sm/main/resources.tfstate
-      AWS_ACCOUNT_ID: 929021032636
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+#   terraform-plan-prod:
+#     name: Terraform Plan (Prod)
+#     runs-on: ubuntu-latest
+#     if: github.ref_name == 'main'
+#     needs: dependency-scan
+#     strategy:
+#       matrix:
+#         include:
+#           - state_name: prod-tf
+#     env:
+#       TERRAFORM_STATE_NAME: ${{ matrix.state_name }}
+#       TERRAFORM_BACKEND_S3_KEYNAME: terraform/cdm-sm/main/resources.tfstate
+#       AWS_ACCOUNT_ID: 929021032636
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
       
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.5.0"
+#       - name: Setup Terraform
+#         uses: hashicorp/setup-terraform@v3
+#         with:
+#           terraform_version: "1.5.0"
       
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
-          aws-region: us-west-2
+#       - name: Configure AWS Credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_PROD }}
+#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_PROD }}
+#           aws-region: us-west-2
       
-      - name: Terraform Init
-        working-directory: ./terraform
-        run: |
-          terraform init \
-            -backend-config="bucket=${{ env.TERRAFORM_BACKEND_S3_BUCKET_PROD }}" \
-            -backend-config="key=${{ env.TERRAFORM_BACKEND_S3_KEYNAME }}" \
-            -backend-config="region=us-west-2"
+#       - name: Terraform Init
+#         working-directory: ./terraform
+#         run: |
+#           terraform init \
+#             -backend-config="bucket=${{ env.TERRAFORM_BACKEND_S3_BUCKET_PROD }}" \
+#             -backend-config="key=${{ env.TERRAFORM_BACKEND_S3_KEYNAME }}" \
+#             -backend-config="region=us-west-2"
       
-      - name: Terraform Plan
-        working-directory: ./terraform
-        run: terraform plan -var-file=./variables/prod.tfvars
+#       - name: Terraform Plan
+#         working-directory: ./terraform
+#         run: terraform plan -var-file=./variables/prod.tfvars
 
-  terraform-apply-prod:
+#   terraform-apply-prod:
     name: Terraform Apply (Prod)
     runs-on: ubuntu-latest
     if: github.ref_name == 'main'
