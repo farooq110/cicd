@@ -76,7 +76,7 @@ jobs:
       TF_VAR_environment: ${{ matrix.environment }}
       TERRAFORM_STATE_NAME: ${{ matrix.state_name }}
       TERRAFORM_BACKEND_S3_KEYNAME: terraform/cdm-sm/${{ github.ref_name }}/resources.tfstate
-      AWS_ACCOUNT_ID: 396816018484
+      AWS_ACCOUNT_ID: 600627334825
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
