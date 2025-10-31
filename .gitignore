@@ -1,0 +1,7 @@
+*venv*
+.DS_Store
+.coverage
+htmlcov*
+.pytest_cache*
+*__pycache__*
+gitlab*

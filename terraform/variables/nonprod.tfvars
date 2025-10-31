@@ -1,0 +1,8 @@
+account                       = "396816018484"
+validation_lambda             = "cdm-authorization-moon"
+polling_lambda                = "cdm-authorization-polling-moon"
+aws_resources_lambda          = "cdm-aws-resources-moon"
+gcp_resources_metadata_lambda = "cdm-gcp-resources-metadata-moon"
+gcp_resources_updates_lambda  = "cdm-gcp-resources-updates-moon"
+nimbus_cloudformation_sm      = "arn:aws:states:us-west-2:396816018484:stateMachine:APP07690-nimbus-cloudformation-nimbus"
+crq_close_lambda              = "cdm-authorization-closeCRQ-moon"

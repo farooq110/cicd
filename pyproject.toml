@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "app09759-cloud-deployment-module-state-machine"
+version = "0.1.0"
+description = "IaC for the CDM state machine"
+authors = ["Stefan Hengartner <Stefan.Hengartner@nordstrom.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+
+[[tool.poetry.source]]
+name = "artifactory"
+url = "https://artifactory.nordstrom.com/artifactory/api/pypi/pypi/simple"
+priority = "primary"
+
+
+[tool.poetry.group.lint.dependencies]
+flake8 = "^7.3.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

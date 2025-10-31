@@ -1,0 +1,5 @@
+[flake8]
+filename = src/
+max-line-length = 100
+count = True
+statistics = True

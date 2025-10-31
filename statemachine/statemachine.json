@@ -1,0 +1,180 @@
+{
+  "Comment": "Cloud Deployment Module for creating per-app-ID deployment IAM roles and Terraform backend S3 buckets for Gitlab and Github pipelines to access cloud accounts securely.",
+  "StartAt": "Validate",
+  "States": {
+    "Validate": {
+      "Comment": "Validatation and authentication of requests from ServiceNow for adding a new deployment app ID.",
+      "Type": "Task",
+      "Resource": "${validation_lambda}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "Failure"
+        }
+      ],
+      "Next": "PollingState"
+    },
+    "PollingState": {
+      "Comment": "Poll for CRQ approval.",
+      "Type": "Task",
+      "Resource": "${polling_lambda}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "Failure"
+        }
+      ],
+      "Next": "ApprovalCheck"
+    },
+    "ApprovalCheck": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.crq_status",
+          "StringEquals": "Scheduled",
+          "Next": "CloudCheck"
+        },
+        {
+            "Variable": "$.crq_status",
+            "StringEquals": "Cancelled",
+            "Next": "End"
+          }
+      ],
+      "Default": "WaitState"
+    },
+    "WaitState": {
+      "Type": "Wait",
+      "Seconds": 600,
+      "Next": "PollingState"
+    },
+    "CloudCheck": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.cloud",
+          "StringEquals": "AWS",
+          "Next": "AWSResources"
+        },
+        {
+          "Variable": "$.cloud",
+          "StringEquals": "GCP",
+          "Next": "GCPResourcesMetadata"
+        }
+      ],
+      "Default": "Failure"
+    },
+    "AWSResources": {
+      "Comment": "Constructs stack metadata needed as input to CloudFormation State Machine.",
+      "Type": "Task",
+      "Resource": "${aws_resources_lambda}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "Failure"
+        }
+      ],
+      "Next": "CloudFormation"
+    },
+    "CloudFormation": {
+      "Comment": "CRUD of gitlab/github OIDC deployment roles and Terraform backend S3 buckets in AWS accounts.",
+      "Type": "Task",
+      "Resource": "arn:aws:states:::states:startExecution.sync:2",
+      "Parameters": {
+        "StateMachineArn": "${nimbus_cloudformation_sm}",
+        "Input": {
+            "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id",
+            "Input.$": "$"
+        }
+      },
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "Failure"
+        }
+      ],
+      "ResultSelector": {
+        "stacks.$": "$.Output"
+      },
+      "ResultPath": "$.cloudformation",
+      "Next": "CloseCRQ"
+    },
+    "GCPResourcesMetadata": {
+        "Comment": "Gets metadata to deploy service accounts and Terraform backend Cloud Storage buckets in GCP projects.",
+        "Type": "Task",
+        "Resource": "${gcp_resources_metadata_lambda}",
+        "Catch": [
+        {
+            "ErrorEquals": [
+            "States.ALL"
+            ],
+            "ResultPath": "$.error",
+            "Next": "Failure"
+        }
+        ],
+        "Next": "GCPResourcesUpdates"
+    },
+    "GCPResourcesUpdates": {
+      "Comment": "CRUD of deploy service accounts and Terraform backend Cloud Storage buckets in GCP projects.",
+      "Type": "Map",
+      "ItemsPath": "$.gcp_deployments.app_ids",
+      "Iterator": {
+        "StartAt": "GCPResources",
+        "States": {
+          "GCPResources": {
+            "Type": "Task",
+            "Resource": "${gcp_resources_updates_lambda}",
+            "Catch": [
+              {
+                "ErrorEquals": [
+                  "States.ALL"
+                ],
+                "ResultPath": "$.error",
+                "Next": "MapFailure"
+              }
+            ],
+            "End": true
+          },
+          "MapFailure": {
+            "Type": "Fail"
+          }
+        }
+      },
+      "ResultPath": "$.gcp_deployments",
+      "Next": "CloseCRQ"
+    },
+    "CloseCRQ": {
+      "Comment": "Closes the CRQ in ServiceNow generated for the deployment.",
+      "Type": "Task",
+      "Resource": "${crq_close_lambda}",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "States.ALL"
+          ],
+          "ResultPath": "$.error",
+          "Next": "Failure"
+        }
+      ],
+      "Next": "End"
+    },
+    "End": {
+      "Type": "Pass",
+      "End": true
+    },
+    "Failure": {
+      "Type": "Fail"
+    }
+  }
+}

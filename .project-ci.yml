@@ -1,0 +1,107 @@
+---
+# https://git.jwn.app/TM01090/pipeline-templates/app02944-variables-ui
+# https://git.jwn.app/TM01255/iac-sig/app08725-sp-terraform-extension
+variables:
+  # IDENTITY
+  APP_ID: APP09759
+  APP_NAME: GitHub Cloud Deployment Module
+
+  # DEPLOYMENT
+  CLOUD_ACCOUNT_ID_NONPROD: 396816018484  # NonProd Nimbus
+  CLOUD_ACCOUNT_ID_PROD: 929021032636  # Prod Nimbus
+
+  # RELEASES
+  RELEASE_BRANCH: main
+  DEV_BRANCH: moon
+  APP_VERSION: $CI_COMMIT_SHORT_SHA
+
+  # SERVICENOW
+  SNAPI_PROD_USER: public.prod.user
+  SNAPI_ASSIGNMENT_GROUP: Cloud Engineering - ISS
+  SNAPI_RISK: 4
+
+  # ARTIFACTORY
+  COMMON_IMAGE: artifactory.nordstrom.com/docker/cic/omnibus_buildtime_v3:1.3.35
+  VULN_SCANNER_IMAGE: artifactory.nordstrom.com/docker/app00651/common/trivy-base:5840868
+
+  # TERRAFORM
+  TERRAFORM_BACKEND_S3_BUCKET_NONPROD: cdm-cicd-moon
+  TERRAFORM_BACKEND_S3_BUCKET_PROD: cdm-cicd-prod
+  TERRAFORM_BACKEND_S3_KEYNAME: "terraform/cdm-sm/${CI_COMMIT_REF_SLUG}/resources.tfstate"
+  AUTO_NONPROD_DEPLOY: "false"
+
+#########
+# BUILD #
+#########
+python-poetry-build:
+  before_script:
+    - echo "skipping......"
+    - exit 0
+
+########
+# TEST #
+########
+dependency-scan:
+  stage: test
+  image: $VULN_SCANNER_IMAGE
+  script:
+    - >
+      trivy fs . --security-checks vuln --exit-code 1 --severity MEDIUM,HIGH,CRITICAL
+      --skip-dirs ./.cicd --ignore-unfixed
+
+poetry-test:
+  before_script:
+    - echo "skipping......"
+    - exit 0
+
+#########################
+# Terraform Deployments #
+#########################
+# Overwriting the terraform-image deployment image
+.terraform-image:
+  image: $COMMON_IMAGE
+
+# Override all the rules to support Moon deployment.
+# The rules are inherited from "sp-terraform-extension"
+.terraform-development-branch-deploy-rules:
+  rules:
+    # don't destroy moon resources
+    - if: $CI_COMMIT_REF_NAME == $DEV_BRANCH && $CI_JOB_NAME == "terraform-destroy-nonprod-development-branch"
+      when: never
+    - if: $CI_COMMIT_REF_NAME != $RELEASE_BRANCH && $CI_COMMIT_REF_NAME != $RELEASE_BRANCH
+      when: manual
+
+# do not run nonprod-release jobs
+terraform-plan-nonprod-release-branch:
+  parallel:
+    matrix: []
+
+terraform-apply-nonprod-release-branch:
+  parallel:
+    matrix: []
+
+terraform-plan-nonprod-development-branch:
+  parallel:
+    matrix:
+      - TF_VAR_environment: "${CI_COMMIT_REF_SLUG}"
+        TERRAFORM_STATE_NAME: dev-${CI_COMMIT_REF_SLUG}-tf
+        TF_CLI_ARGS_plan: -var-file=${CI_PROJECT_DIR}/terraform/variables/nonprod.tfvars
+
+terraform-apply-nonprod-development-branch:
+  parallel:
+    matrix:
+      - TF_VAR_environment: "${CI_COMMIT_REF_SLUG}"
+        TERRAFORM_STATE_NAME: dev-${CI_COMMIT_REF_SLUG}-tf
+        TF_CLI_ARGS_apply: -var-file=${CI_PROJECT_DIR}/terraform/variables/nonprod.tfvars
+
+terraform-plan-prod:
+  parallel:
+    matrix:
+      - TERRAFORM_STATE_NAME: prod-tf
+        TF_CLI_ARGS_plan: -var-file=${CI_PROJECT_DIR}/terraform/variables/prod.tfvars
+
+terraform-apply-prod:  
+  parallel:
+    matrix:
+      - TERRAFORM_STATE_NAME: prod-tf
+        TF_CLI_ARGS_apply: -var-file=${CI_PROJECT_DIR}/terraform/variables/prod.tfvars
